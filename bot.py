@@ -222,13 +222,12 @@ def _build_summary(history: History) -> str:
 
     text += "\n" * 2
 
-    text += "Top values:"
+    text += "Top results:"
     for value in history.get_top_values():
         slots = _SLOT_MACHINE_VALUES[value]
         description = ", ".join(str(slot) for slot in slots)
-        text += (
-            f"\n{value} ({description}): occurred {history.get_occurrence_by_value(value)} times"
-        )
+        occurrence = history.get_occurrence_by_value(value)
+        text += f"\n- {occurrence}x {description}"
 
     return text
 

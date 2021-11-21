@@ -145,7 +145,7 @@ class History:
     def get_occurrence_by_value(self, value: int) -> int:
         return self._occurrences_by_value[value - 1]
 
-    def get_top_values(self, n: int = 5) -> List[int]:
+    def get_top_values(self, n: int = 10) -> List[int]:
         sorted_values = sorted(range(1, 65), key=self.get_occurrence_by_value, reverse=True)
         return sorted_values[:n]
 

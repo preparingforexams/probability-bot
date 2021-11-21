@@ -5,9 +5,11 @@ import sys
 import time
 from dataclasses import dataclass
 from enum import Enum, auto
+from tempfile import TemporaryFile
 from threading import Thread, Lock
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple, Dict, IO
 
+import matplotlib.pyplot as plot
 import requests
 import sentry_sdk
 from requests.exceptions import HTTPError
@@ -139,29 +141,48 @@ def _send_dice(chat_id: int, emoji: str = "🎰") -> dict:
     ))
 
 
+def _send_image(
+    chat_id: int,
+    image_file: IO[bytes], caption: str,
+    reply_to_message_id: Optional[int],
+) -> dict:
+    return _get_actual_body(requests.post(
+        _build_url("sendPhoto"),
+        files={
+            "photo": image_file,
+        },
+        data={
+            "caption": caption,
+            "chat_id": chat_id,
+            "reply_to_message_id": reply_to_message_id,
+        },
+        timeout=10,
+    ))
+
+
 @dataclass
 class History:
     _lock: Lock
     test_count: int
-    _occurrences_by_value: List[int]
+    occurrences_by_value: List[int]
     occurrences_by_slot: Dict[Slot, int]
 
     def __init__(self):
         self._lock = Lock()
         self.test_count = 0
-        self._occurrences_by_value = [0 for _ in range(64)]
+        self.occurrences_by_value = [0 for _ in range(64)]
         self.occurrences_by_slot = {slot: 0 for slot in Slot}
 
     def add_test(self, value: int):
         with self._lock:
             self.test_count += 1
-            self._occurrences_by_value[value - 1] += 1
+            self.occurrences_by_value[value - 1] += 1
             slots = _SLOT_MACHINE_VALUES[value]
             for slot in slots:
                 self.occurrences_by_slot[slot] += 1
 
     def get_occurrence_by_value(self, value: int) -> int:
-        return self._occurrences_by_value[value - 1]
+        return self.occurrences_by_value[value - 1]
 
     def get_top_values(self, n: int = 10) -> List[int]:
         sorted_values = sorted(range(1, 65), key=self.get_occurrence_by_value, reverse=True)
@@ -170,7 +191,7 @@ class History:
     def load(self, serialized: str):
         values = json.loads(serialized)
         self.test_count = values["count"]
-        self._occurrences_by_value = values["occurrences_by_value"]
+        self.occurrences_by_value = values["occurrences_by_value"]
         self.occurrences_by_slot = {
             Slot.by_name(slot): value
             for slot, value in values["occurrences_by_slot"].items()
@@ -180,7 +201,7 @@ class History:
         with self._lock:
             values = dict(
                 count=self.test_count,
-                occurrences_by_value=self._occurrences_by_value,
+                occurrences_by_value=self.occurrences_by_value,
                 occurrences_by_slot={
                     str(slot): value
                     for slot, value in self.occurrences_by_slot.items()
@@ -212,6 +233,24 @@ def _dump_history(history: History):
     with open(file_path, 'w') as f:
         content = history.serialize()
         f.write(content)
+
+
+def _create_plot(history: History, file: IO):
+    fig, ax = plot.subplots()
+
+    ax.hist(
+        list(range(64)),
+        weights=[history.occurrences_by_value],
+        bins=64,
+        linewidth=0.3,
+        edgecolor="white",
+    )
+
+    plot.savefig(
+        fname=file,
+        format="png",
+        bbox_inches="tight",
+    )
 
 
 def _build_summary(history: History) -> str:
@@ -246,8 +285,16 @@ def _handle_message(history: History, message: dict):
     elif text:
         chat_id = message["chat"]["id"]
         if text.startswith("/summary"):
-            summary = _build_summary(history)
-            _send_message(chat_id, summary, message["message_id"])
+            with TemporaryFile("w+b") as f:
+                summary = _build_summary(history)
+                _create_plot(history, f)
+                f.seek(0)
+                _send_image(
+                    chat_id,
+                    image_file=f,
+                    caption=summary,
+                    reply_to_message_id=message["message_id"],
+                )
         elif text.startswith("/stopspam"):
             _stop_spam()
         elif text.startswith("/spam"):

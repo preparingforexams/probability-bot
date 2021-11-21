@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import sys
@@ -12,6 +13,7 @@ import sentry_sdk
 from requests.exceptions import HTTPError
 
 _API_KEY = os.getenv("TELEGRAM_API_KEY")
+_DUMP_LOCATION = os.getenv("DATA_PATH")
 
 _LOG = logging.getLogger("bot")
 
@@ -24,6 +26,14 @@ class Slot(Enum):
 
     def __str__(self):
         return self.name
+
+    @classmethod
+    def by_name(cls, name: str):
+        for slot in cls:
+            if slot.name == name:
+                return slot
+
+        raise ValueError(f"Unknown slot: {name}")
 
 
 _SLOT_MACHINE_VALUES: Dict[int, Tuple[Slot, Slot, Slot]] = {
@@ -157,6 +167,52 @@ class History:
         sorted_values = sorted(range(1, 65), key=self.get_occurrence_by_value, reverse=True)
         return sorted_values[:n]
 
+    def load(self, serialized: str):
+        values = json.loads(serialized)
+        self.test_count = values["count"]
+        self._occurrences_by_value = values["occurrences_by_value"]
+        self.occurrences_by_slot = {
+            Slot.by_name(slot): value
+            for slot, value in values["occurrences_by_slot"].items()
+        }
+
+    def serialize(self) -> str:
+        with self._lock:
+            values = dict(
+                count=self.test_count,
+                occurrences_by_value=self._occurrences_by_value,
+                occurrences_by_slot={
+                    str(slot): value
+                    for slot, value in self.occurrences_by_slot.items()
+                }
+            )
+            return json.dumps(values)
+
+
+def _get_dump_file_path() -> str:
+    folder = _DUMP_LOCATION or "data"
+    if not os.path.exists(folder):
+        os.mkdir(folder)
+    return os.path.join(folder, "history.json")
+
+
+def _try_load_history(history: History):
+    file_path = _get_dump_file_path()
+    if not os.path.isfile(file_path):
+        _LOG.info("No history file found")
+        return
+
+    with open(file_path) as f:
+        content = f.read()
+        history.load(content)
+
+
+def _dump_history(history: History):
+    file_path = _get_dump_file_path()
+    with open(file_path, 'w') as f:
+        content = history.serialize()
+        f.write(content)
+
 
 def _build_summary(history: History) -> str:
     text = f"Handled {history.test_count} slot machine results.\n"
@@ -186,6 +242,8 @@ def _handle_message(history: History, message: dict):
             return
 
         history.add_test(dice["value"])
+        # Is this a database?
+        _dump_history(history)
     elif text:
         chat_id = message["chat"]["id"]
         if text.startswith("/summary"):
@@ -231,6 +289,7 @@ def _request_updates(last_update_id: Optional[int]) -> List[dict]:
 def _handle_updates():
     last_update_id: Optional[int] = None
     history = History()
+    _try_load_history(history)
     while True:
         updates = _request_updates(last_update_id)
         try:
@@ -308,6 +367,9 @@ def main():
     if not _API_KEY:
         _LOG.error("Missing API key")
         sys.exit(1)
+
+    if not _DUMP_LOCATION:
+        _LOG.warning("DATA_PATH is not set!")
 
     _handle_updates()
 

@@ -27,6 +27,16 @@ spec:
             requests:
               cpu: 10m
               memory: 32Mi
+          volumeMounts:
+            - mountPath: /data
+              name: persistence
+          env:
+            - name: DATA_PATH
+              value: /data/probability
           envFrom:
             - secretRef:
                 name: {{ .Values.name }}-secrets
+      volumes:
+        - name: persistence
+          persistentVolumeClaim:
+            claimName: {{ .Values.name }}-persistence

@@ -1,0 +1,7 @@
+name: probability
+image: ghcr.io/preparingforexams/probabilitybot:${GITHUB_SHA}
+telegram:
+  apiKey: ${TELEGRAM_TOKEN}
+  spamChatId: -1001273335614
+sentry:
+  dsn: ${SENTRY_DSN}

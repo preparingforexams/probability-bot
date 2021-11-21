@@ -222,7 +222,7 @@ def _build_summary(history: History) -> str:
 
     text += "\n" * 2
 
-    text += "Top results:"
+    text += "Top ten results:"
     for value in history.get_top_values():
         slots = _SLOT_MACHINE_VALUES[value]
         description = ", ".join(str(slot) for slot in slots)

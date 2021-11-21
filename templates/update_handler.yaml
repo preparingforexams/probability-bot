@@ -21,8 +21,6 @@ spec:
       containers:
         - name: app
           image: {{ .Values.image }}
-          args:
-            - handle-updates
           resources:
             limits:
               cpu: 50m

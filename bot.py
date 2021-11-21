@@ -4,10 +4,12 @@ import sys
 import time
 from dataclasses import dataclass
 from enum import Enum, auto
+from threading import Thread, Lock
 from typing import Optional, List, Tuple, Dict
 
 import requests
 import sentry_sdk
+from requests.exceptions import HTTPError
 
 _API_KEY = os.getenv("TELEGRAM_API_KEY")
 
@@ -19,6 +21,9 @@ class Slot(Enum):
     GRAPE = auto()
     LEMON = auto()
     SEVEN = auto()
+
+    def __str__(self):
+        return self.name
 
 
 _SLOT_MACHINE_VALUES: Dict[int, Tuple[Slot, Slot, Slot]] = {
@@ -126,21 +131,24 @@ def _send_dice(chat_id: int, emoji: str = "🎰") -> dict:
 
 @dataclass
 class History:
+    _lock: Lock
     test_count: int
     _occurrences_by_value: List[int]
     occurrences_by_slot: Dict[Slot, int]
 
     def __init__(self):
+        self._lock = Lock()
         self.test_count = 0
         self._occurrences_by_value = [0 for _ in range(64)]
         self.occurrences_by_slot = {slot: 0 for slot in Slot}
 
     def add_test(self, value: int):
-        self.test_count += 1
-        self._occurrences_by_value[value - 1] += 1
-        slots = _SLOT_MACHINE_VALUES[value]
-        for slot in slots:
-            self.occurrences_by_slot[slot] += 1
+        with self._lock:
+            self.test_count += 1
+            self._occurrences_by_value[value - 1] += 1
+            slots = _SLOT_MACHINE_VALUES[value]
+            for slot in slots:
+                self.occurrences_by_slot[slot] += 1
 
     def get_occurrence_by_value(self, value: int) -> int:
         return self._occurrences_by_value[value - 1]
@@ -162,18 +170,14 @@ def _build_summary(history: History) -> str:
     for value in history.get_top_values():
         slots = _SLOT_MACHINE_VALUES[value]
         description = ", ".join(str(slot) for slot in slots)
-        text += f"\n{value} ({description}): occurred {history.get_occurrence_by_value(value)} times"
+        text += (
+            f"\n{value} ({description}): occurred {history.get_occurrence_by_value(value)} times"
+        )
 
     return text
 
 
-def _handle_update(history: History, update: dict):
-    message = update.get("message")
-
-    if not message:
-        _LOG.debug("Skipping non-message update")
-        return
-
+def _handle_message(history: History, message: dict):
     dice: Optional[dict] = message.get("dice")
     text: Optional[str] = message.get("text")
     if dice:
@@ -183,12 +187,31 @@ def _handle_update(history: History, update: dict):
 
         history.add_test(dice["value"])
     elif text:
+        chat_id = message["chat"]["id"]
         if text.startswith("/summary"):
             summary = _build_summary(history)
-            _send_message(message["chat"]["id"], summary, message["message_id"])
+            _send_message(chat_id, summary, message["message_id"])
+        elif text.startswith("/stopspam"):
+            _stop_spam()
+        elif text.startswith("/spam"):
+            _start_spam(chat_id, history)
+            _send_message(
+                chat_id,
+                "Stop spamming with /stopspam",
+                message["message_id"],
+            )
     else:
         _LOG.debug("Skipping non-dice and non-text message")
+
+
+def _handle_update(history: History, update: dict):
+    message = update.get("message")
+
+    if not message:
+        _LOG.debug("Skipping non-message update")
         return
+
+    _handle_message(history, message)
 
 
 def _request_updates(last_update_id: Optional[int]) -> List[dict]:
@@ -218,17 +241,39 @@ def _handle_updates():
             _LOG.error("Could not handle update", exc_info=e)
 
 
-def _spam():
-    spam_chat_id = os.getenv("SPAM_CHAT_ID")
-    if not spam_chat_id:
-        _LOG.error("SPAM_CHAT_ID is not set")
-        sys.exit(1)
+is_spamming: bool = False
+spammer: Optional[Thread] = None
 
-    chat_id = int(spam_chat_id)
 
-    while True:
-        _send_dice(chat_id)
-        time.sleep(0.1)
+def _spam(chat_id: int, history: Optional[History] = None):
+    while is_spamming:
+        try:
+            message = _send_dice(chat_id)
+        except HTTPError:
+            _LOG.warning("Waiting because of rate limit")
+            time.sleep(60)
+            continue
+        if history is not None:
+            _handle_message(history, message)
+        time.sleep(1)
+
+
+def _start_spam(chat_id: int, history: History):
+    global is_spamming, spammer
+    if is_spamming or spammer is not None:
+        return
+
+    is_spamming = True
+    spammer = Thread(name="spam", target=lambda: _spam(chat_id, history), daemon=True)
+    spammer.start()
+
+
+def _stop_spam():
+    global is_spamming, spammer
+    if is_spamming and spammer is not None:
+        is_spamming = False
+        time.sleep(0.2)
+        spammer = None
 
 
 def _setup_logging():
@@ -264,19 +309,7 @@ def main():
         _LOG.error("Missing API key")
         sys.exit(1)
 
-    args = sys.argv
-    if len(args) != 2:
-        _log_arg_error()
-        sys.exit(1)
-
-    command_name = args[1]
-    if command_name == 'handle-updates':
-        _handle_updates()
-    elif command_name == 'spam':
-        _spam()
-    else:
-        _log_arg_error()
-        sys.exit(1)
+    _handle_updates()
 
 
 if __name__ == '__main__':

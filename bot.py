@@ -268,7 +268,7 @@ def _build_summary(history: History) -> str:
         occurrence = history.get_occurrence_by_value(value)
         text += f"\n- {occurrence}x {description}"
 
-    text += "\n"
+    text += "\n" * 2
 
     text += "Least common results:"
     for value in history.get_extreme_values(top=False):

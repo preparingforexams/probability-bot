@@ -184,8 +184,8 @@ class History:
     def get_occurrence_by_value(self, value: int) -> int:
         return self.occurrences_by_value[value - 1]
 
-    def get_top_values(self, n: int = 10) -> List[int]:
-        sorted_values = sorted(range(1, 65), key=self.get_occurrence_by_value, reverse=True)
+    def get_extreme_values(self, top: bool, n: int = 5) -> List[int]:
+        sorted_values = sorted(range(1, 65), key=self.get_occurrence_by_value, reverse=top)
         return sorted_values[:n]
 
     def load(self, serialized: str):
@@ -261,8 +261,17 @@ def _build_summary(history: History) -> str:
 
     text += "\n" * 2
 
-    text += "Top ten results:"
-    for value in history.get_top_values():
+    text += "Most common results:"
+    for value in history.get_extreme_values(top=True):
+        slots = _SLOT_MACHINE_VALUES[value]
+        description = ", ".join(str(slot) for slot in slots)
+        occurrence = history.get_occurrence_by_value(value)
+        text += f"\n- {occurrence}x {description}"
+
+    text += "\n"
+
+    text += "Least common results:"
+    for value in history.get_extreme_values(top=False):
         slots = _SLOT_MACHINE_VALUES[value]
         description = ", ".join(str(slot) for slot in slots)
         occurrence = history.get_occurrence_by_value(value)

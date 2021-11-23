@@ -307,13 +307,15 @@ def _handle_message(history: History, message: dict):
                     reply_to_message_id=message_id,
                 )
         elif text.startswith("/stopspam"):
-            if message["from"]["id"] != _ADMIN_USER_ID:
+            user_id: int = message["from"]["id"]
+            if str(user_id) != _ADMIN_USER_ID:
                 _LOG.info("Non-admin user tried to stop spam")
                 _send_message(chat_id, "no u", message_id)
                 return
             _stop_spam()
         elif text.startswith("/spam"):
-            if message["from"]["id"] != _ADMIN_USER_ID:
+            user_id: int = message["from"]["id"]
+            if str(user_id) != _ADMIN_USER_ID:
                 _LOG.info("Non-admin user tried to start spam")
                 _send_message(chat_id, "nah.", message_id)
                 return

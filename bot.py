@@ -466,12 +466,24 @@ def _spam(chat_id: int, history: History):
             return
         history.inc_self_tests()
         _handle_message(history, message)
-        if _IS_GOLDEN_FIVE_MODE and message["dice"]["value"] in [1, 64]:
+        if _IS_GOLDEN_FIVE_MODE and message["dice"]["value"] in [1, 22, 43, 64]:
             time.sleep(_SLEEP_TIME)
             gold_result = _try_for_gold(chat_id, message["message_id"])
             time.sleep(_SLEEP_TIME)
             if gold_result.stage == GoldStage.won:
-                _send_message(chat_id, "Fuck yeah! #gloriousFive", gold_result.last_message_id)
+                value = message["dice"]["value"]
+                if value == 64:
+                    _send_message(
+                        chat_id,
+                        "Fuck yeah! #gloriousFiveDeluxe #suckItSteffen",
+                        gold_result.last_message_id,
+                    )
+                else:
+                    _send_message(
+                        chat_id,
+                        "Fuck yeah! #gloriousFive",
+                        gold_result.last_message_id,
+                    )
                 return
             elif gold_result.last_message_id is None:
                 _send_message(chat_id, "I got bored")

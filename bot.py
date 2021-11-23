@@ -294,6 +294,7 @@ def _handle_message(history: History, message: dict):
         _dump_history(history)
     elif text:
         chat_id = message["chat"]["id"]
+        message_id = message["message_id"]
         if text.startswith("/summary"):
             with TemporaryFile("w+b") as f:
                 summary = _build_summary(history)
@@ -303,13 +304,18 @@ def _handle_message(history: History, message: dict):
                     chat_id,
                     image_file=f,
                     caption=summary,
-                    reply_to_message_id=message["message_id"],
+                    reply_to_message_id=message_id,
                 )
         elif text.startswith("/stopspam"):
+            if message["from"]["id"] != _ADMIN_USER_ID:
+                _LOG.info("Non-admin user tried to stop spam")
+                _send_message(chat_id, "no u", message_id)
+                return
             _stop_spam()
         elif text.startswith("/spam"):
             if message["from"]["id"] != _ADMIN_USER_ID:
                 _LOG.info("Non-admin user tried to start spam")
+                _send_message(chat_id, "nah.", message_id)
                 return
             _start_spam(chat_id, history)
     else:

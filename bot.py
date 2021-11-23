@@ -219,6 +219,7 @@ def _get_dump_file_path() -> str:
 
 
 def _try_load_history(history: History):
+    _LOG.info("Trying to load history...")
     file_path = _get_dump_file_path()
     if not os.path.isfile(file_path):
         _LOG.info("No history file found")
@@ -227,6 +228,8 @@ def _try_load_history(history: History):
     with open(file_path) as f:
         content = f.read()
         history.load(content)
+
+    _LOG.info("Successfully loaded history")
 
 
 def _dump_history(history: History):

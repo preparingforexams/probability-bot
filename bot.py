@@ -415,6 +415,8 @@ class GoldResult:
     def __init__(self, stage: GoldStage, message: Optional[dict]):
         self.stage = stage
         self.last_message_id = message["message_id"] if message else None
+        if stage in [GoldStage.football, GoldStage.basketball] and message:
+            _LOG.warning("Failed %s with value %d", stage, message["dice"]["value"])
 
 
 def _try_for_gold(chat_id: int, message_id: int) -> GoldResult:

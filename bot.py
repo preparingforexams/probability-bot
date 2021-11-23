@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from tempfile import TemporaryFile
 from threading import Thread, Lock
-from typing import Optional, List, Tuple, Dict, IO
+from typing import Optional, List, Tuple, Dict, IO, Callable
 
 import matplotlib.pyplot as plot
 import requests
@@ -17,6 +17,7 @@ from requests.exceptions import HTTPError
 _ADMIN_USER_ID = os.getenv("ADMIN_USER_ID")
 _API_KEY = os.getenv("TELEGRAM_API_KEY")
 _DUMP_LOCATION = os.getenv("DATA_PATH")
+_IS_GOLDEN_FIVE_MODE = bool(os.getenv("TRY_GOLDEN_FIVE", "false"))
 
 _LOG = logging.getLogger("bot")
 
@@ -119,7 +120,7 @@ def _get_actual_body(response: requests.Response):
     raise ValueError(f"Body was not ok! {body}")
 
 
-def _send_message(chat_id: int, text: str, reply_to_message_id: Optional[int]) -> dict:
+def _send_message(chat_id: int, text: str, reply_to_message_id: Optional[int] = None) -> dict:
     return _get_actual_body(requests.post(
         _build_url("sendMessage"),
         json={
@@ -131,12 +132,17 @@ def _send_message(chat_id: int, text: str, reply_to_message_id: Optional[int]) -
     ))
 
 
-def _send_dice(chat_id: int, emoji: str = "🎰") -> dict:
+def _send_dice(
+    chat_id: int,
+    emoji: str = "🎰",
+    reply_to_message_id: Optional[int] = None,
+) -> dict:
     return _get_actual_body(requests.post(
         _build_url("sendDice"),
         json={
             "chat_id": chat_id,
             "emoji": emoji,
+            "reply_to_message_id": reply_to_message_id,
         },
         timeout=10,
     ))
@@ -174,13 +180,14 @@ class History:
         self.occurrences_by_value = [0 for _ in range(64)]
         self.occurrences_by_slot = {slot: 0 for slot in Slot}
 
-    def add_test(self, value: int):
+    def add_test(self, value: int) -> Tuple[Slot, Slot, Slot]:
         with self._lock:
             self.test_count += 1
             self.occurrences_by_value[value - 1] += 1
             slots = _SLOT_MACHINE_VALUES[value]
             for slot in slots:
                 self.occurrences_by_slot[slot] += 1
+            return slots
 
     def get_occurrence_by_value(self, value: int) -> int:
         return self.occurrences_by_value[value - 1]
@@ -284,7 +291,7 @@ def _build_summary(history: History) -> str:
     return text
 
 
-def _handle_message(history: History, message: dict):
+def _handle_message(history: History, message: dict) -> Optional[Tuple[Slot, Slot, Slot]]:
     dice: Optional[dict] = message.get("dice")
     text: Optional[str] = message.get("text")
     if dice:
@@ -292,9 +299,10 @@ def _handle_message(history: History, message: dict):
             _LOG.debug("Skipping non-slot-machine message")
             return
 
-        history.add_test(dice["value"])
+        result = history.add_test(dice["value"])
         # Is this a database?
         _dump_history(history)
+        return result
     elif text:
         chat_id = message["chat"]["id"]
         message_id = message["message_id"]
@@ -369,16 +377,64 @@ is_spamming: bool = False
 spammer: Optional[Thread] = None
 
 
-def _spam(chat_id: int, history: Optional[History] = None):
+def _try_send_dice(send_dice: Callable[[], dict]) -> dict:
     while is_spamming:
         try:
-            message = _send_dice(chat_id)
+            return send_dice()
         except HTTPError:
             _LOG.warning("Waiting because of rate limit")
             time.sleep(60)
-            continue
-        if history is not None:
-            _handle_message(history, message)
+
+
+def _try_for_gold(chat_id: int, message_id: int) -> bool:
+    bowling = _try_send_dice(lambda: _send_dice(
+        chat_id,
+        emoji="🎳",
+        reply_to_message_id=message_id,
+    ))
+    if bowling["dice"]["value"] != 6:
+        return False
+
+    time.sleep(1)
+
+    dart = _try_send_dice(lambda: _send_dice(
+        chat_id,
+        emoji="🎯",
+        reply_to_message_id=message_id,
+    ))
+    if dart["dice"]["value"] != 6:
+        return False
+
+    time.sleep(1)
+
+    football = _try_send_dice(lambda: _send_dice(
+        chat_id,
+        emoji="⚽",
+        reply_to_message_id=message_id,
+    ))
+    if football["dice"]["value"] not in [4, 5]:
+        return False
+
+    time.sleep(1)
+
+    basketball = _try_send_dice(lambda: _send_dice(
+        chat_id,
+        emoji="🏀",
+        reply_to_message_id=message_id,
+    ))
+    return basketball["dice"]["value"] in [4, 5]
+
+
+def _spam(chat_id: int, history: History):
+    while is_spamming:
+        message = _try_send_dice(lambda: _send_dice(chat_id))
+        _handle_message(history, message)
+        if _IS_GOLDEN_FIVE_MODE and message["dice"]["value"] in [1, 64]:
+            time.sleep(1)
+            if _try_for_gold(chat_id, message["message_id"]):
+                time.sleep(1)
+                _send_message(chat_id, "Fuck yeah!")
+                return
         time.sleep(1)
 
 

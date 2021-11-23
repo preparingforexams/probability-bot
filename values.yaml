@@ -3,5 +3,6 @@ image: "ghcr.io/preparingforexams/probabilitybot:${GITHUB_SHA}"
 telegram:
   adminUserId: "${ADMIN_USER_ID}"
   apiKey: "${TELEGRAM_TOKEN}"
+  tryGoldenFive: true
 sentry:
   dsn: "${SENTRY_DSN}"

@@ -172,12 +172,14 @@ def _send_image(
 class History:
     _lock: Lock
     test_count: int
+    self_test_count: int
     occurrences_by_value: List[int]
     occurrences_by_slot: Dict[Slot, int]
 
     def __init__(self):
         self._lock = Lock()
         self.test_count = 0
+        self.self_test_count = 0
         self.occurrences_by_value = [0 for _ in range(64)]
         self.occurrences_by_slot = {slot: 0 for slot in Slot}
 
@@ -197,9 +199,14 @@ class History:
         sorted_values = sorted(range(1, 65), key=self.get_occurrence_by_value, reverse=top)
         return sorted_values[:n]
 
+    def inc_self_tests(self):
+        with self._lock:
+            self.self_test_count += 1
+
     def load(self, serialized: str):
         values = json.loads(serialized)
         self.test_count = values["count"]
+        self.self_test_count = values.get("self_test_count", 0)
         self.occurrences_by_value = values["occurrences_by_value"]
         self.occurrences_by_slot = {
             Slot.by_name(slot): value
@@ -210,6 +217,7 @@ class History:
         with self._lock:
             values = dict(
                 count=self.test_count,
+                self_test_count=self.self_test_count,
                 occurrences_by_value=self.occurrences_by_value,
                 occurrences_by_slot={
                     str(slot): value
@@ -266,7 +274,10 @@ def _create_plot(history: History, file: IO):
 
 
 def _build_summary(history: History) -> str:
-    text = f"Handled {history.test_count} slot machine results.\n"
+    text = f"Handled {history.test_count} slot machine results,"
+    text += f" more than {history.self_test_count} of which I triggered with my own two hands!"
+
+    text += "\n"
 
     for slot in Slot:
         text += f"\n{slot}: {history.occurrences_by_slot[slot]}"
@@ -432,6 +443,7 @@ def _spam(chat_id: int, history: History):
         message = _try_send_dice(lambda: _send_dice(chat_id))
         if message is None:
             return
+        history.inc_self_tests()
         _handle_message(history, message)
         if _IS_GOLDEN_FIVE_MODE and message["dice"]["value"] in [1, 64]:
             time.sleep(_SLEEP_TIME)

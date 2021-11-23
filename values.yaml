@@ -1,8 +1,7 @@
 name: probability
-image: ghcr.io/preparingforexams/probabilitybot:${GITHUB_SHA}
+image: "ghcr.io/preparingforexams/probabilitybot:${GITHUB_SHA}"
 telegram:
-  adminUserId: ${ADMIN_USER_ID}
-  apiKey: ${TELEGRAM_TOKEN}
-  spamChatId: -1001273335614
+  adminUserId: "${ADMIN_USER_ID}"
+  apiKey: "${TELEGRAM_TOKEN}"
 sentry:
-  dsn: ${SENTRY_DSN}
+  dsn: "${SENTRY_DSN}"

@@ -14,6 +14,7 @@ import requests
 import sentry_sdk
 from requests.exceptions import HTTPError
 
+_ADMIN_USER_ID = os.getenv("ADMIN_USER_ID")
 _API_KEY = os.getenv("TELEGRAM_API_KEY")
 _DUMP_LOCATION = os.getenv("DATA_PATH")
 
@@ -307,12 +308,10 @@ def _handle_message(history: History, message: dict):
         elif text.startswith("/stopspam"):
             _stop_spam()
         elif text.startswith("/spam"):
+            if message["from"]["id"] != _ADMIN_USER_ID:
+                _LOG.info("Non-admin user tried to start spam")
+                return
             _start_spam(chat_id, history)
-            _send_message(
-                chat_id,
-                "Stop spamming with /stopspam",
-                message["message_id"],
-            )
     else:
         _LOG.debug("Skipping non-dice and non-text message")
 

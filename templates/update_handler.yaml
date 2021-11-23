@@ -35,6 +35,8 @@ spec:
               value: /data/probability
             - name: TRY_GOLDEN_FIVE
               value: "{{ .Values.telegram.tryGoldenFive }}"
+            - name: SLEEP_TIME
+              value: "{{ .Values.telegram.sleepTime }}"
           envFrom:
             - secretRef:
                 name: {{ .Values.name }}-secrets

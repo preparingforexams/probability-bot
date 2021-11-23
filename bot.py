@@ -18,6 +18,7 @@ _ADMIN_USER_ID = os.getenv("ADMIN_USER_ID")
 _API_KEY = os.getenv("TELEGRAM_API_KEY")
 _DUMP_LOCATION = os.getenv("DATA_PATH")
 _IS_GOLDEN_FIVE_MODE = bool(os.getenv("TRY_GOLDEN_FIVE", "false"))
+_SLEEP_TIME = float(os.getenv("SLEEP_TIME", "5"))
 
 _LOG = logging.getLogger("bot")
 
@@ -377,13 +378,14 @@ is_spamming: bool = False
 spammer: Optional[Thread] = None
 
 
-def _try_send_dice(send_dice: Callable[[], dict]) -> dict:
+def _try_send_dice(send_dice: Callable[[], dict]) -> Optional[dict]:
     while is_spamming:
         try:
             return send_dice()
         except HTTPError:
             _LOG.warning("Waiting because of rate limit")
             time.sleep(60)
+    return None
 
 
 def _try_for_gold(chat_id: int, message_id: int) -> bool:
@@ -392,50 +394,52 @@ def _try_for_gold(chat_id: int, message_id: int) -> bool:
         emoji="🎳",
         reply_to_message_id=message_id,
     ))
-    if bowling["dice"]["value"] != 6:
+    if bowling is None or bowling["dice"]["value"] != 6:
         return False
 
-    time.sleep(1)
+    time.sleep(_SLEEP_TIME)
 
     dart = _try_send_dice(lambda: _send_dice(
         chat_id,
         emoji="🎯",
         reply_to_message_id=message_id,
     ))
-    if dart["dice"]["value"] != 6:
+    if dart is None or dart["dice"]["value"] != 6:
         return False
 
-    time.sleep(1)
+    time.sleep(_SLEEP_TIME)
 
     football = _try_send_dice(lambda: _send_dice(
         chat_id,
         emoji="⚽",
         reply_to_message_id=message_id,
     ))
-    if football["dice"]["value"] not in [4, 5]:
+    if football is None or football["dice"]["value"] not in [4, 5]:
         return False
 
-    time.sleep(1)
+    time.sleep(_SLEEP_TIME)
 
     basketball = _try_send_dice(lambda: _send_dice(
         chat_id,
         emoji="🏀",
         reply_to_message_id=message_id,
     ))
-    return basketball["dice"]["value"] in [4, 5]
+    return basketball is not None and basketball["dice"]["value"] in [4, 5]
 
 
 def _spam(chat_id: int, history: History):
     while is_spamming:
         message = _try_send_dice(lambda: _send_dice(chat_id))
+        if message is None:
+            return
         _handle_message(history, message)
         if _IS_GOLDEN_FIVE_MODE and message["dice"]["value"] in [1, 64]:
-            time.sleep(1)
+            time.sleep(_SLEEP_TIME)
             if _try_for_gold(chat_id, message["message_id"]):
-                time.sleep(1)
+                time.sleep(_SLEEP_TIME)
                 _send_message(chat_id, "Fuck yeah!")
                 return
-        time.sleep(1)
+        time.sleep(_SLEEP_TIME)
 
 
 def _start_spam(chat_id: int, history: History):

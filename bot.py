@@ -472,18 +472,23 @@ def _spam(chat_id: int, history: History):
             time.sleep(_SLEEP_TIME)
             if gold_result.stage == GoldStage.won:
                 value = message["dice"]["value"]
+                hashtags = []
                 if value == 64:
-                    _send_message(
-                        chat_id,
-                        "Fuck yeah! #gloriousFiveDeluxe #suckItSteffen",
-                        gold_result.last_message_id,
-                    )
+                    hashtags.append("#gloriousFiveDeluxe")
+                    hashtags.append("#suckItSteffen")
                 else:
-                    _send_message(
-                        chat_id,
-                        "Fuck yeah! #gloriousFive",
-                        gold_result.last_message_id,
-                    )
+                    hashtags.append("#gloriousFive")
+
+                if value not in [1, 64]:
+                    hashtags.append("#notSoGlorious")
+                    hashtags.append("#cheapVictory")
+                    hashtags.append("#fuckFruitsButNotInASexualWay")
+
+                _send_message(
+                    chat_id,
+                    f"Fuck yeah! {' '.join(hashtags)}",
+                    gold_result.last_message_id,
+                )
                 return
             elif gold_result.last_message_id is None:
                 _send_message(chat_id, "I got bored")

@@ -399,14 +399,32 @@ def _try_send_dice(send_dice: Callable[[], dict]) -> Optional[dict]:
     return None
 
 
-def _try_for_gold(chat_id: int, message_id: int) -> bool:
+class GoldStage(Enum):
+    bowling = auto()
+    dart = auto()
+    football = auto()
+    basketball = auto()
+    won = auto()
+
+
+@dataclass
+class GoldResult:
+    stage: GoldStage
+    last_message_id: Optional[int]
+
+    def __init__(self, stage: GoldStage, message: Optional[dict]):
+        self.stage = stage
+        self.last_message_id = message["message_id"] if message else None
+
+
+def _try_for_gold(chat_id: int, message_id: int) -> GoldResult:
     bowling = _try_send_dice(lambda: _send_dice(
         chat_id,
         emoji="🎳",
         reply_to_message_id=message_id,
     ))
     if bowling is None or bowling["dice"]["value"] != 6:
-        return False
+        return GoldResult(GoldStage.bowling, bowling)
 
     time.sleep(_SLEEP_TIME)
 
@@ -416,7 +434,7 @@ def _try_for_gold(chat_id: int, message_id: int) -> bool:
         reply_to_message_id=message_id,
     ))
     if dart is None or dart["dice"]["value"] != 6:
-        return False
+        return GoldResult(GoldStage.dart, dart)
 
     time.sleep(_SLEEP_TIME)
 
@@ -426,7 +444,7 @@ def _try_for_gold(chat_id: int, message_id: int) -> bool:
         reply_to_message_id=message_id,
     ))
     if football is None or football["dice"]["value"] not in [4, 5]:
-        return False
+        return GoldResult(GoldStage.football, football)
 
     time.sleep(_SLEEP_TIME)
 
@@ -435,7 +453,10 @@ def _try_for_gold(chat_id: int, message_id: int) -> bool:
         emoji="🏀",
         reply_to_message_id=message_id,
     ))
-    return basketball is not None and basketball["dice"]["value"] in [4, 5]
+    if basketball is None or basketball["dice"]["value"] not in [4, 5]:
+        return GoldResult(GoldStage.basketball, basketball)
+
+    return GoldResult(GoldStage.won, basketball)
 
 
 def _spam(chat_id: int, history: History):
@@ -447,13 +468,35 @@ def _spam(chat_id: int, history: History):
         _handle_message(history, message)
         if _IS_GOLDEN_FIVE_MODE and message["dice"]["value"] in [1, 64]:
             time.sleep(_SLEEP_TIME)
-            got_gold = _try_for_gold(chat_id, message["message_id"])
+            gold_result = _try_for_gold(chat_id, message["message_id"])
             time.sleep(_SLEEP_TIME)
-            if got_gold:
-                _send_message(chat_id, "Fuck yeah! #gloriousFive")
+            if gold_result.stage == GoldStage.won:
+                _send_message(chat_id, "Fuck yeah! #gloriousFive", gold_result.last_message_id)
+                return
+            elif gold_result.last_message_id is None:
+                _send_message(chat_id, "I got bored")
                 return
             else:
-                _send_message(chat_id, "#sad #silverMedal")
+                if gold_result.stage == GoldStage.bowling:
+                    _send_message(chat_id, "#sad #fuckBowling", gold_result.last_message_id)
+                elif gold_result.stage == GoldStage.dart:
+                    _send_message(
+                        chat_id,
+                        "#sad #tooSoberForDarts",
+                        gold_result.last_message_id,
+                    )
+                elif gold_result.stage == GoldStage.football:
+                    _send_message(
+                        chat_id,
+                        "#sad #lionelMessiWhoDisIPreferLionelRichieAmirite #allNightLong",
+                        gold_result.last_message_id,
+                    )
+                elif gold_result.stage == GoldStage.basketball:
+                    _send_message(
+                        chat_id,
+                        "#sad #everythingButNet",
+                        gold_result.last_message_id,
+                    )
 
         time.sleep(_SLEEP_TIME)
 

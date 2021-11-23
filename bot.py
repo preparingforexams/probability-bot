@@ -447,10 +447,14 @@ def _spam(chat_id: int, history: History):
         _handle_message(history, message)
         if _IS_GOLDEN_FIVE_MODE and message["dice"]["value"] in [1, 64]:
             time.sleep(_SLEEP_TIME)
-            if _try_for_gold(chat_id, message["message_id"]):
-                time.sleep(_SLEEP_TIME)
-                _send_message(chat_id, "Fuck yeah!")
+            got_gold = _try_for_gold(chat_id, message["message_id"])
+            time.sleep(_SLEEP_TIME)
+            if got_gold:
+                _send_message(chat_id, "Fuck yeah! #gloriousFive")
                 return
+            else:
+                _send_message(chat_id, "#sad #silverMedal")
+
         time.sleep(_SLEEP_TIME)
 
 

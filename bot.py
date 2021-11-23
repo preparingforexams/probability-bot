@@ -420,6 +420,16 @@ class GoldResult:
 
 
 def _try_for_gold(chat_id: int, message_id: int) -> GoldResult:
+    football = _try_send_dice(lambda: _send_dice(
+        chat_id,
+        emoji="⚽",
+        reply_to_message_id=message_id,
+    ))
+    if football is None or football["dice"]["value"] not in [4, 5]:
+        return GoldResult(GoldStage.football, football)
+
+    time.sleep(_SLEEP_TIME)
+
     bowling = _try_send_dice(lambda: _send_dice(
         chat_id,
         emoji="🎳",
@@ -437,16 +447,6 @@ def _try_for_gold(chat_id: int, message_id: int) -> GoldResult:
     ))
     if dart is None or dart["dice"]["value"] != 6:
         return GoldResult(GoldStage.dart, dart)
-
-    time.sleep(_SLEEP_TIME)
-
-    football = _try_send_dice(lambda: _send_dice(
-        chat_id,
-        emoji="⚽",
-        reply_to_message_id=message_id,
-    ))
-    if football is None or football["dice"]["value"] not in [4, 5]:
-        return GoldResult(GoldStage.football, football)
 
     time.sleep(_SLEEP_TIME)
 

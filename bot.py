@@ -525,6 +525,16 @@ def _start_spam(chat_id: int, history: History):
     if is_spamming or spammer is not None:
         return
 
+    def _run():
+        global is_spamming, spammer
+        try:
+            _spam(chat_id, history)
+        except Exception as e:
+            _LOG.error("Unexcpected exception", exc_info=e)
+        finally:
+            is_spamming = False
+            spammer = None
+
     is_spamming = True
     spammer = Thread(name="spam", target=lambda: _spam(chat_id, history), daemon=True)
     spammer.start()

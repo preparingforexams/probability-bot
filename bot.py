@@ -468,7 +468,8 @@ def _spam(chat_id: int, history: History):
             return
         history.inc_self_tests()
         _handle_message(history, message)
-        if _IS_GOLDEN_FIVE_MODE and message["dice"]["value"] in [1, 22, 43, 64]:
+        # 1 bar, 22,43 fruits, 64 seven
+        if _IS_GOLDEN_FIVE_MODE and message["dice"]["value"] in [64]:
             time.sleep(_SLEEP_TIME)
             gold_result = _try_for_gold(chat_id, message["message_id"])
             time.sleep(_SLEEP_TIME)

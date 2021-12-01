@@ -344,7 +344,7 @@ def _handle_message(history: History, message: dict) -> Optional[Tuple[Slot, Slo
                 return
             _start_spam(chat_id, history)
     else:
-        _LOG.debug("Skipping non-dice and non-text message")
+        _LOG.debug("Skipping non-dice and non-text message: %s", message)
 
 
 def _handle_update(history: History, update: dict):

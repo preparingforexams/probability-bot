@@ -591,8 +591,12 @@ def _setup_sentry():
         _LOG.warning("Sentry DSN not found")
         return
 
+    version = os.getenv("BUILD_SHA", "dirty")
+
     sentry_sdk.init(
         dsn,
+
+        release=version,
 
         # Set traces_sample_rate to 1.0 to capture 100%
         # of transactions for performance monitoring.

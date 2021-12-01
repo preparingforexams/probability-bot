@@ -151,7 +151,8 @@ def _send_dice(
 
 def _send_image(
     chat_id: int,
-    image_file: IO[bytes], caption: str,
+    image_file: IO[bytes],
+    caption: str,
     reply_to_message_id: Optional[int],
 ) -> dict:
     return _get_actual_body(requests.post(
@@ -166,6 +167,28 @@ def _send_image(
         },
         timeout=10,
     ))
+
+
+def _send_existing_image(
+    chat_id: int,
+    file_id: str,
+    reply_to_message_id: Optional[int],
+) -> dict:
+    return _get_actual_body(requests.post(
+        _build_url("sendPhoto"),
+        json={
+            "chat_id": chat_id,
+            "reply_to_message_id": reply_to_message_id,
+        },
+        timeout=10,
+    ))
+
+
+def _send_lemon_meme(message: dict):
+    chat_id = message['chat']['id']
+    message_id = message['message_id']
+    file_id = "AgACAgIAAxkBAAOaYaevigmUAzZZ_K5CLEL2j4Gs2FkAAhe1MRsINDlJ0YwxQwvAN1wBAAMCAAN4AAMiBA"
+    _send_existing_image(chat_id, file_id, reply_to_message_id=message_id)
 
 
 @dataclass
@@ -314,6 +337,13 @@ def _handle_message(history: History, message: dict) -> Optional[Tuple[Slot, Slo
         result = history.add_test(dice["value"])
         # Is this a database?
         _dump_history(history)
+
+        if result == (Slot.LEMON,) * 3:
+            try:
+                _send_lemon_meme(message)
+            except Exception as e:
+                _LOG.error("Could not send lemon meme", exc_info=e)
+
         return result
     elif text:
         chat_id = message["chat"]["id"]

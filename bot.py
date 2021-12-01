@@ -537,8 +537,8 @@ def _start_spam(chat_id: int, history: History):
             spammer = None
 
     is_spamming = True
-    spammer = Thread(name="spam", target=lambda: _spam(chat_id, history), daemon=True)
-    spammer.start()
+    # always wanted to use that operator
+    (spammer := Thread(name="spam", target=_run, daemon=True)).start()
 
 
 def _stop_spam():

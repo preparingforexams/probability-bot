@@ -179,6 +179,7 @@ def _send_existing_image(
         json={
             "chat_id": chat_id,
             "reply_to_message_id": reply_to_message_id,
+            "photo": file_id,
         },
         timeout=10,
     ))

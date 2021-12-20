@@ -1,6 +1,5 @@
 apiVersion: v2
 name: telegram-bot
-description: "a Telegram bot"
 
 type: application
 

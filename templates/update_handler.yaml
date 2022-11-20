@@ -1,22 +1,36 @@
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Service
 metadata:
-  name: {{ .Values.name }}-update-handler
-  labels:
-    app: {{ .Values.name }}-update-handler
+  name: {{ .Release.Name }}
 spec:
-  revisionHistoryLimit: 1
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}
+spec:
   replicas: 1
-  strategy:
-    type: Recreate
+  serviceName: {{ .Release.Name }}
   selector:
     matchLabels:
-      app: {{ .Values.name }}-update-handler
+      app: {{ .Release.Name }}
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: {{ .Values.name }}
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
   template:
     metadata:
       labels:
-        app: {{ .Values.name }}-update-handler
+        app: {{ .Release.Name }}
     spec:
       containers:
         - name: app
@@ -29,7 +43,7 @@ spec:
               memory: 32Mi
           volumeMounts:
             - mountPath: /data
-              name: persistence
+              name: {{ .Release.Name }}
           env:
             - name: DATA_PATH
               value: /data/probability
@@ -39,8 +53,4 @@ spec:
               value: "{{ .Values.telegram.sleepTime }}"
           envFrom:
             - secretRef:
-                name: {{ .Values.name }}-secrets
-      volumes:
-        - name: persistence
-          persistentVolumeClaim:
-            claimName: {{ .Values.name }}-persistence
+                name: {{ .Release.Name }}

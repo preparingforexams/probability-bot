@@ -1,4 +1,3 @@
-name: probability
 image: "ghcr.io/preparingforexams/probabilitybot:${GITHUB_SHA}"
 telegram:
   adminUserId: "${ADMIN_USER_ID}"

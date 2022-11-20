@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import signal
 import sys
 import time
 from dataclasses import dataclass
@@ -134,9 +135,9 @@ def _send_message(chat_id: int, text: str, reply_to_message_id: Optional[int] = 
 
 
 def _send_dice(
-    chat_id: int,
-    emoji: str = "🎰",
-    reply_to_message_id: Optional[int] = None,
+        chat_id: int,
+        emoji: str = "🎰",
+        reply_to_message_id: Optional[int] = None,
 ) -> dict:
     return _get_actual_body(requests.post(
         _build_url("sendDice"),
@@ -150,10 +151,10 @@ def _send_dice(
 
 
 def _send_image(
-    chat_id: int,
-    image_file: IO[bytes],
-    caption: str,
-    reply_to_message_id: Optional[int],
+        chat_id: int,
+        image_file: IO[bytes],
+        caption: str,
+        reply_to_message_id: Optional[int],
 ) -> dict:
     return _get_actual_body(requests.post(
         _build_url("sendPhoto"),
@@ -170,9 +171,9 @@ def _send_image(
 
 
 def _send_existing_image(
-    chat_id: int,
-    file_id: str,
-    reply_to_message_id: Optional[int],
+        chat_id: int,
+        file_id: str,
+        reply_to_message_id: Optional[int],
 ) -> dict:
     return _get_actual_body(requests.post(
         _build_url("sendPhoto"),
@@ -402,11 +403,24 @@ def _request_updates(last_update_id: Optional[int]) -> List[dict]:
     ))
 
 
+@dataclass
+class TerminationGuard:
+    is_terminated: bool = False
+
+    def handle_signal(self, signal_code: int, _):
+        if signal_code == signal.Signals.SIGTERM:
+            self.is_terminated = True
+
+
 def _handle_updates():
     last_update_id: Optional[int] = None
     history = History()
     _try_load_history(history)
-    while True:
+
+    termination_guard = TerminationGuard()
+    signal.signal(signal.SIGTERM, termination_guard.handle_signal)
+
+    while not termination_guard.is_terminated:
         updates = _request_updates(last_update_id)
         try:
             for update in updates:

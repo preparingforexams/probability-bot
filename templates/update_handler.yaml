@@ -40,7 +40,7 @@ spec:
               cpu: 50m
             requests:
               cpu: 10m
-              memory: 32Mi
+              memory: 64Mi
           volumeMounts:
             - mountPath: /data
               name: {{ .Release.Name }}

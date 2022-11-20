@@ -23,6 +23,7 @@ _SLEEP_TIME = float(os.getenv("SLEEP_TIME", "5"))
 
 _LOG = logging.getLogger("bot")
 
+session = requests.Session()
 
 class Slot(Enum):
     BAR = auto()
@@ -123,7 +124,7 @@ def _get_actual_body(response: requests.Response):
 
 
 def _send_message(chat_id: int, text: str, reply_to_message_id: Optional[int] = None) -> dict:
-    return _get_actual_body(requests.post(
+    return _get_actual_body(session.post(
         _build_url("sendMessage"),
         json={
             "text": text,
@@ -139,7 +140,7 @@ def _send_dice(
         emoji: str = "🎰",
         reply_to_message_id: Optional[int] = None,
 ) -> dict:
-    return _get_actual_body(requests.post(
+    return _get_actual_body(session.post(
         _build_url("sendDice"),
         json={
             "chat_id": chat_id,
@@ -156,7 +157,7 @@ def _send_image(
         caption: str,
         reply_to_message_id: Optional[int],
 ) -> dict:
-    return _get_actual_body(requests.post(
+    return _get_actual_body(session.post(
         _build_url("sendPhoto"),
         files={
             "photo": image_file,
@@ -175,7 +176,7 @@ def _send_existing_image(
         file_id: str,
         reply_to_message_id: Optional[int],
 ) -> dict:
-    return _get_actual_body(requests.post(
+    return _get_actual_body(session.post(
         _build_url("sendPhoto"),
         json={
             "chat_id": chat_id,
@@ -396,7 +397,7 @@ def _request_updates(last_update_id: Optional[int]) -> List[dict]:
             "offset": last_update_id + 1,
             "timeout": 10,
         }
-    return _get_actual_body(requests.post(
+    return _get_actual_body(session.post(
         _build_url("getUpdates"),
         json=body,
         timeout=15,

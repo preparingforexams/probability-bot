@@ -30,7 +30,7 @@ jobs:
           ADMIN_USER_ID: ${{ secrets.ADMIN_USER_ID }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-      - uses: WyriHaximus/github-action-helm3@v2
+      - uses: WyriHaximus/github-action-helm3@v3
         with:
           exec: helm upgrade probabilitybot . --install --namespace=telegram-bots --atomic
           kubeconfig: '${{ secrets.KUBECONFIG_RAW }}'

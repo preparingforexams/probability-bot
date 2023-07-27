@@ -21,4 +21,4 @@ RUN poetry install --only main
 ARG APP_VERSION
 ENV BUILD_SHA=$APP_VERSION
 
-ENTRYPOINT [ "python", "-m", "probability.bot" ]
+ENTRYPOINT [ "poetry", "run", "python", "-m", "probability.bot" ]

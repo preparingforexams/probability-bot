@@ -7,8 +7,8 @@ import time
 from dataclasses import dataclass
 from enum import Enum, auto
 from tempfile import TemporaryFile
-from threading import Thread, Lock
-from typing import Optional, List, Tuple, Dict, IO, Callable
+from threading import Lock, Thread
+from typing import IO, Callable, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plot
 import requests
@@ -24,6 +24,7 @@ _SLEEP_TIME = float(os.getenv("SLEEP_TIME", "5"))
 _LOG = logging.getLogger("bot")
 
 session = requests.Session()
+
 
 class Slot(Enum):
     BAR = auto()
@@ -123,73 +124,83 @@ def _get_actual_body(response: requests.Response):
     raise ValueError(f"Body was not ok! {body}")
 
 
-def _send_message(chat_id: int, text: str, reply_to_message_id: Optional[int] = None) -> dict:
-    return _get_actual_body(session.post(
-        _build_url("sendMessage"),
-        json={
-            "text": text,
-            "chat_id": chat_id,
-            "reply_to_message_id": reply_to_message_id,
-        },
-        timeout=10,
-    ))
+def _send_message(
+    chat_id: int, text: str, reply_to_message_id: Optional[int] = None
+) -> dict:
+    return _get_actual_body(
+        session.post(
+            _build_url("sendMessage"),
+            json={
+                "text": text,
+                "chat_id": chat_id,
+                "reply_to_message_id": reply_to_message_id,
+            },
+            timeout=10,
+        )
+    )
 
 
 def _send_dice(
-        chat_id: int,
-        emoji: str = "🎰",
-        reply_to_message_id: Optional[int] = None,
+    chat_id: int,
+    emoji: str = "🎰",
+    reply_to_message_id: Optional[int] = None,
 ) -> dict:
-    return _get_actual_body(session.post(
-        _build_url("sendDice"),
-        json={
-            "chat_id": chat_id,
-            "emoji": emoji,
-            "reply_to_message_id": reply_to_message_id,
-        },
-        timeout=10,
-    ))
+    return _get_actual_body(
+        session.post(
+            _build_url("sendDice"),
+            json={
+                "chat_id": chat_id,
+                "emoji": emoji,
+                "reply_to_message_id": reply_to_message_id,
+            },
+            timeout=10,
+        )
+    )
 
 
 def _send_image(
-        chat_id: int,
-        image_file: IO[bytes],
-        caption: str,
-        reply_to_message_id: Optional[int],
+    chat_id: int,
+    image_file: IO[bytes],
+    caption: str,
+    reply_to_message_id: Optional[int],
 ) -> dict:
-    return _get_actual_body(session.post(
-        _build_url("sendPhoto"),
-        files={
-            "photo": image_file,
-        },
-        data={
-            "caption": caption,
-            "chat_id": chat_id,
-            "reply_to_message_id": reply_to_message_id,
-        },
-        timeout=10,
-    ))
+    return _get_actual_body(
+        session.post(
+            _build_url("sendPhoto"),
+            files={
+                "photo": image_file,
+            },
+            data={
+                "caption": caption,
+                "chat_id": chat_id,
+                "reply_to_message_id": reply_to_message_id,
+            },
+            timeout=10,
+        )
+    )
 
 
 def _send_existing_image(
-        chat_id: int,
-        file_id: str,
-        reply_to_message_id: Optional[int],
+    chat_id: int,
+    file_id: str,
+    reply_to_message_id: Optional[int],
 ) -> dict:
-    return _get_actual_body(session.post(
-        _build_url("sendPhoto"),
-        json={
-            "chat_id": chat_id,
-            "reply_to_message_id": reply_to_message_id,
-            "photo": file_id,
-        },
-        timeout=10,
-    ))
+    return _get_actual_body(
+        session.post(
+            _build_url("sendPhoto"),
+            json={
+                "chat_id": chat_id,
+                "reply_to_message_id": reply_to_message_id,
+                "photo": file_id,
+            },
+            timeout=10,
+        )
+    )
 
 
 def _send_lemon_meme(message: dict):
-    chat_id = message['chat']['id']
-    message_id = message['message_id']
+    chat_id = message["chat"]["id"]
+    message_id = message["message_id"]
     file_id = "AgACAgIAAxkBAAOaYaevigmUAzZZ_K5CLEL2j4Gs2FkAAhe1MRsINDlJ0YwxQwvAN1wBAAMCAAN4AAMiBA"
     _send_existing_image(chat_id, file_id, reply_to_message_id=message_id)
 
@@ -222,7 +233,9 @@ class History:
         return self.occurrences_by_value[value - 1]
 
     def get_extreme_values(self, top: bool, n: int = 5) -> List[int]:
-        sorted_values = sorted(range(1, 65), key=self.get_occurrence_by_value, reverse=top)
+        sorted_values = sorted(
+            range(1, 65), key=self.get_occurrence_by_value, reverse=top
+        )
         return sorted_values[:n]
 
     def inc_self_tests(self):
@@ -246,9 +259,8 @@ class History:
                 self_test_count=self.self_test_count,
                 occurrences_by_value=self.occurrences_by_value,
                 occurrences_by_slot={
-                    str(slot): value
-                    for slot, value in self.occurrences_by_slot.items()
-                }
+                    str(slot): value for slot, value in self.occurrences_by_slot.items()
+                },
             )
             return json.dumps(values)
 
@@ -276,7 +288,7 @@ def _try_load_history(history: History):
 
 def _dump_history(history: History):
     file_path = _get_dump_file_path()
-    with open(file_path, 'w') as f:
+    with open(file_path, "w") as f:
         content = history.serialize()
         f.write(content)
 
@@ -329,7 +341,9 @@ def _build_summary(history: History) -> str:
     return text
 
 
-def _handle_message(history: History, message: dict) -> Optional[Tuple[Slot, Slot, Slot]]:
+def _handle_message(
+    history: History, message: dict
+) -> Optional[Tuple[Slot, Slot, Slot]]:
     dice: Optional[dict] = message.get("dice")
     text: Optional[str] = message.get("text")
     if dice:
@@ -397,11 +411,13 @@ def _request_updates(last_update_id: Optional[int]) -> List[dict]:
             "offset": last_update_id + 1,
             "timeout": 10,
         }
-    return _get_actual_body(session.post(
-        _build_url("getUpdates"),
-        json=body,
-        timeout=15,
-    ))
+    return _get_actual_body(
+        session.post(
+            _build_url("getUpdates"),
+            json=body,
+            timeout=15,
+        )
+    )
 
 
 @dataclass
@@ -466,41 +482,49 @@ class GoldResult:
 
 
 def _try_for_gold(chat_id: int, message_id: int) -> GoldResult:
-    bowling = _try_send_dice(lambda: _send_dice(
-        chat_id,
-        emoji="🎳",
-        reply_to_message_id=message_id,
-    ))
+    bowling = _try_send_dice(
+        lambda: _send_dice(
+            chat_id,
+            emoji="🎳",
+            reply_to_message_id=message_id,
+        )
+    )
     if bowling is None or bowling["dice"]["value"] != 6:
         return GoldResult(GoldStage.bowling, bowling)
 
     time.sleep(_SLEEP_TIME)
 
-    dart = _try_send_dice(lambda: _send_dice(
-        chat_id,
-        emoji="🎯",
-        reply_to_message_id=message_id,
-    ))
+    dart = _try_send_dice(
+        lambda: _send_dice(
+            chat_id,
+            emoji="🎯",
+            reply_to_message_id=message_id,
+        )
+    )
     if dart is None or dart["dice"]["value"] != 6:
         return GoldResult(GoldStage.dart, dart)
 
     time.sleep(_SLEEP_TIME)
 
-    football = _try_send_dice(lambda: _send_dice(
-        chat_id,
-        emoji="⚽",
-        reply_to_message_id=message_id,
-    ))
+    football = _try_send_dice(
+        lambda: _send_dice(
+            chat_id,
+            emoji="⚽",
+            reply_to_message_id=message_id,
+        )
+    )
     if football is None or football["dice"]["value"] not in [3, 4, 5]:
         return GoldResult(GoldStage.football, football)
 
     time.sleep(_SLEEP_TIME)
 
-    basketball = _try_send_dice(lambda: _send_dice(
-        chat_id,
-        emoji="🏀",
-        reply_to_message_id=message_id,
-    ))
+    basketball = _try_send_dice(
+        lambda: _send_dice(
+            chat_id,
+            emoji="🏀",
+            reply_to_message_id=message_id,
+        )
+    )
     if basketball is None or basketball["dice"]["value"] not in [4, 5]:
         return GoldResult(GoldStage.basketball, basketball)
 
@@ -544,7 +568,9 @@ def _spam(chat_id: int, history: History):
                 return
             else:
                 if gold_result.stage == GoldStage.bowling:
-                    _send_message(chat_id, "#sad #fuckBowling", gold_result.last_message_id)
+                    _send_message(
+                        chat_id, "#sad #fuckBowling", gold_result.last_message_id
+                    )
                 elif gold_result.stage == GoldStage.dart:
                     _send_message(
                         chat_id,
@@ -610,13 +636,11 @@ def _setup_sentry():
 
     sentry_sdk.init(
         dsn,
-
         release=version,
-
         # Set traces_sample_rate to 1.0 to capture 100%
         # of transactions for performance monitoring.
         # We recommend adjusting this value in production.
-        traces_sample_rate=1.0
+        traces_sample_rate=1.0,
     )
 
 
@@ -638,5 +662,5 @@ def main():
     _handle_updates()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

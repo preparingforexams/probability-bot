@@ -2,13 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+ENV POETRY_VIRTUALENVS_CREATE=false
 
-RUN pip install -r requirements.txt --no-cache
+RUN pip install pipx==1.2.0 --user --no-cache
+RUN pipx install poetry==1.5.1
 
-COPY bot.py .
+COPY [ "poetry.toml", "poetry.lock", "pyproject.toml", "./" ]
+COPY src .
 
-ARG build
-ENV BUILD_SHA=$build
+RUN poetry install --only main
 
-ENTRYPOINT [ "python", "-m", "bot" ]
+ARG APP_VERSION
+ENV BUILD_SHA=$APP_VERSION
+
+ENTRYPOINT [ "python", "-m", "probability.bot" ]

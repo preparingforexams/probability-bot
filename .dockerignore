@@ -1,3 +1,2 @@
 .git
-
-**/.dart_tool
+.venv/

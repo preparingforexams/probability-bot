@@ -10,10 +10,9 @@ from tempfile import TemporaryFile
 from threading import Lock, Thread
 from typing import IO, Callable, Dict, List, Optional, Tuple
 
+import httpx
 import matplotlib.pyplot as plot
-import requests
 import sentry_sdk
-from requests.exceptions import HTTPError
 
 _ADMIN_USER_ID = os.getenv("ADMIN_USER_ID")
 _API_KEY = os.getenv("TELEGRAM_API_KEY")
@@ -23,7 +22,7 @@ _SLEEP_TIME = float(os.getenv("SLEEP_TIME", "5"))
 
 _LOG = logging.getLogger("bot")
 
-session = requests.Session()
+client = httpx.Client(timeout=30)
 
 
 class Slot(Enum):
@@ -116,7 +115,7 @@ def _build_url(method: str) -> str:
     return f"https://api.telegram.org/bot{_API_KEY}/{method}"
 
 
-def _get_actual_body(response: requests.Response):
+def _get_actual_body(response: httpx.Response):
     response.raise_for_status()
     body = response.json()
     if body.get("ok"):
@@ -128,14 +127,13 @@ def _send_message(
     chat_id: int, text: str, reply_to_message_id: Optional[int] = None
 ) -> dict:
     return _get_actual_body(
-        session.post(
+        client.post(
             _build_url("sendMessage"),
             json={
                 "text": text,
                 "chat_id": chat_id,
                 "reply_to_message_id": reply_to_message_id,
             },
-            timeout=10,
         )
     )
 
@@ -146,14 +144,13 @@ def _send_dice(
     reply_to_message_id: Optional[int] = None,
 ) -> dict:
     return _get_actual_body(
-        session.post(
+        client.post(
             _build_url("sendDice"),
             json={
                 "chat_id": chat_id,
                 "emoji": emoji,
                 "reply_to_message_id": reply_to_message_id,
             },
-            timeout=10,
         )
     )
 
@@ -165,7 +162,7 @@ def _send_image(
     reply_to_message_id: Optional[int],
 ) -> dict:
     return _get_actual_body(
-        session.post(
+        client.post(
             _build_url("sendPhoto"),
             files={
                 "photo": image_file,
@@ -175,7 +172,6 @@ def _send_image(
                 "chat_id": chat_id,
                 "reply_to_message_id": reply_to_message_id,
             },
-            timeout=10,
         )
     )
 
@@ -186,14 +182,13 @@ def _send_existing_image(
     reply_to_message_id: Optional[int],
 ) -> dict:
     return _get_actual_body(
-        session.post(
+        client.post(
             _build_url("sendPhoto"),
             json={
                 "chat_id": chat_id,
                 "reply_to_message_id": reply_to_message_id,
                 "photo": file_id,
             },
-            timeout=10,
         )
     )
 
@@ -414,7 +409,7 @@ def _request_updates(last_update_id: Optional[int]) -> List[dict]:
             "timeout": 10,
         }
     return _get_actual_body(
-        session.post(
+        client.post(
             _build_url("getUpdates"),
             json=body,
             timeout=15,
@@ -457,7 +452,7 @@ def _try_send_dice(send_dice: Callable[[], dict]) -> Optional[dict]:
     while is_spamming:
         try:
             return send_dice()
-        except HTTPError:
+        except httpx.HTTPStatusError:
             _LOG.warning("Waiting because of rate limit")
             time.sleep(60)
     return None
@@ -605,7 +600,7 @@ def _start_spam(chat_id: int, history: History):
         try:
             _spam(chat_id, history)
         except Exception as e:
-            _LOG.error("Unexcpected exception", exc_info=e)
+            _LOG.error("Unexpected exception", exc_info=e)
         finally:
             is_spamming = False
             spammer = None

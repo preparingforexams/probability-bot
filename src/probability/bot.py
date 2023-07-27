@@ -349,7 +349,7 @@ def _handle_message(
     if dice:
         if dice["emoji"] != "🎰":
             _LOG.debug("Skipping non-slot-machine message")
-            return
+            return None
 
         result = history.add_test(dice["value"])
         # Is this a database?
@@ -377,21 +377,23 @@ def _handle_message(
                     reply_to_message_id=message_id,
                 )
         elif text.startswith("/stopspam"):
-            user_id: int = message["from"]["id"]
+            user_id = message["from"]["id"]
             if str(user_id) != _ADMIN_USER_ID:
                 _LOG.info("Non-admin user tried to stop spam")
                 _send_message(chat_id, "no u", message_id)
-                return
+                return None
             _stop_spam()
         elif text.startswith("/spam"):
-            user_id: int = message["from"]["id"]
+            user_id = message["from"]["id"]
             if str(user_id) != _ADMIN_USER_ID:
                 _LOG.info("Non-admin user tried to start spam")
                 _send_message(chat_id, "nah.", message_id)
-                return
+                return None
             _start_spam(chat_id, history)
     else:
         _LOG.debug("Skipping non-dice and non-text message: %s", message)
+
+    return None
 
 
 def _handle_update(history: History, update: dict):
@@ -429,7 +431,7 @@ class TerminationGuard:
             self.is_terminated = True
 
 
-def _handle_updates():
+def _handle_updates() -> None:
     last_update_id: Optional[int] = None
     history = History()
     _try_load_history(history)

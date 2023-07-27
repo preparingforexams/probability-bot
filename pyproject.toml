@@ -15,6 +15,7 @@ black = "^23.0.0"
 isort = "^5.12.0"
 mypy = "^1.0.0"
 pytest = "^7.4.0"
+types-requests = "^2.31.0.2"
 
 [build-system]
 requires = ["poetry-core>=1.2.0"]
@@ -27,3 +28,7 @@ profile = "black"
 filterwarnings = [
     # "error",
 ]
+
+[[tool.mypy.overrides]]
+module = "matplotlib.*"
+ignore_missing_imports = true

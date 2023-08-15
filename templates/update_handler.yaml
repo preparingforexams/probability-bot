@@ -32,6 +32,8 @@ spec:
       labels:
         app: {{ .Release.Name }}
     spec:
+      securityContext:
+        fsGroup: 999
       containers:
         - name: app
           image: {{ .Values.image }}

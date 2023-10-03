@@ -5,7 +5,7 @@ description = ""
 authors = ["Björn Petersen <git@bjoernpetersen.net>"]
 
 [tool.poetry.dependencies]
-python = "~3.11"
+python = "~3.12"
 matplotlib = "^3.7.2"
 sentry-sdk = "^1.9.9"
 httpx = "^0.25.0"

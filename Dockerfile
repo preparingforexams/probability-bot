@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
 
 RUN useradd --system --create-home --home-dir /app -s /bin/bash app
 USER app

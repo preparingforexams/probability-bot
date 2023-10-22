@@ -33,7 +33,7 @@ spec:
         app: {{ .Release.Name }}
     spec:
       securityContext:
-        fsGroup: 999
+        fsGroup: 500
       containers:
         - name: app
           image: {{ .Values.image }}

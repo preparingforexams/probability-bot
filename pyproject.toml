@@ -14,7 +14,7 @@ httpx = "^0.26.0"
 black = "^23.0.0"
 mypy = "^1.0.0"
 pytest = "^7.4.0"
-ruff = "0.1.10"
+ruff = "0.1.11"
 
 [build-system]
 requires = ["poetry-core>=1.2.0"]

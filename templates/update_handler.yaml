@@ -49,6 +49,8 @@ spec:
           env:
             - name: DATA_PATH
               value: /data/probability
+            - name: MPLCONFIGDIR
+              value: /data/matplotlib
             - name: TRY_GOLDEN_FIVE
               value: "{{ .Values.telegram.tryGoldenFive }}"
             - name: SLEEP_TIME

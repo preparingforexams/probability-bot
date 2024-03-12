@@ -46,6 +46,9 @@ spec:
           volumeMounts:
             - mountPath: /data
               name: {{ .Release.Name }}
+          command:
+            - sleep
+            - infinity
           env:
             - name: DATA_PATH
               value: /data/probability

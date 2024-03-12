@@ -46,7 +46,7 @@ jobs:
         run: "envsubst < values.yaml > values_sub.yaml && mv values_sub.yaml values.yaml"
       - uses: WyriHaximus/github-action-helm3@v4
         with:
-          exec: helm upgrade probabilitybot . --install --namespace=telegram-bots --atomic
+          exec: helm upgrade bot . --install --namespace=probability-bot --atomic
           kubeconfig: '${{ secrets.BORN_KUBECONFIG_RAW }}'
 
   clean:

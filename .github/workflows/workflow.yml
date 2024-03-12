@@ -24,10 +24,12 @@ jobs:
       - test
     uses: BlindfoldedSurgery/actions-container/.github/workflows/build-image-docker.yml@v3
     with:
+      platform: 'linux/arm64'
       push-image: ${{ github.ref_name == github.event.repository.default_branch }}
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: born-prep
+    container: ghcr.io/bjoernpetersen/helm:2.0.1
     needs: build-container-image
     if: success() && github.ref_name == github.event.repository.default_branch
     concurrency: production
@@ -45,7 +47,7 @@ jobs:
       - uses: WyriHaximus/github-action-helm3@v4
         with:
           exec: helm upgrade probabilitybot . --install --namespace=telegram-bots --atomic
-          kubeconfig: '${{ secrets.KUBECONFIG_RAW }}'
+          kubeconfig: '${{ secrets.BORN_KUBECONFIG_RAW }}'
 
   clean:
     concurrency: cleanup

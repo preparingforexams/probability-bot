@@ -11,7 +11,7 @@ kind: StatefulSet
 metadata:
   name: {{ .Release.Name }}
 spec:
-  replicas: 1
+  replicas: 0
   serviceName: {{ .Release.Name }}
   selector:
     matchLabels:
@@ -36,7 +36,7 @@ spec:
         fsGroup: 500
       containers:
         - name: app
-          image: {{ .Values.image }}
+          image: {{ .Values.image }}:{{ .Values.appVersion }}
           resources:
             limits:
               cpu: 50m

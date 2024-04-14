@@ -1,0 +1,6 @@
+appVersion: latest
+image: ghcr.io/preparingforexams/probability-bot
+telegram:
+  adminUserId: "133399998"
+  sleepTime: "5"
+  tryGoldenFive: true

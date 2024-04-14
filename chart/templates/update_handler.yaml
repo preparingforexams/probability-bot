@@ -11,7 +11,7 @@ kind: StatefulSet
 metadata:
   name: {{ .Release.Name }}
 spec:
-  replicas: 0
+  replicas: 1
   serviceName: {{ .Release.Name }}
   selector:
     matchLabels:
